@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Money Desk">
+<meta name="theme-color" content="#F3F4F7" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1217" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<title>Money Desk</title>
+<style>
+/* Layout: phone-first. Sticky title bar, one screen at a time, tab bar pinned to the bottom, a floating + for adding spending. */
+:root{
+  --bg:#F3F4F7; --surface:#FFFFFF; --sunk:#E9ECF1; --ink:#161A20; --muted:#5B6472; --line:#DADEE5;
+  --accent:#2747C9; --accent-ink:#FFFFFF; --accent-soft:#E5EAFB;
+  --good:#1E7F4F; --warn:#A86A12; --bad:#C2362F; --good-soft:#E3F3EA; --warn-soft:#FBF0DD; --bad-soft:#FBE5E3;
+  --f-display:ui-rounded, "SF Pro Rounded", -apple-system, system-ui, sans-serif;
+  --f-body:-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --f-num:ui-monospace, "SF Mono", Menlo, monospace;
+  --r:12px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0F1217; --surface:#171B22; --sunk:#1E232B; --ink:#E8EBF0; --muted:#98A1AE; --line:#2A303A;
+  --accent:#8199FF; --accent-ink:#0F1217; --accent-soft:#1E2645;
+  --good:#4CC38A; --warn:#E2A94A; --bad:#F06C64; --good-soft:#15291F; --warn-soft:#2E2414; --bad-soft:#331A19;
+  color-scheme:dark}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.45 var(--f-body);padding:0 16px calc(96px + env(safe-area-inset-bottom,0px));-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+.wrap{max-width:640px;margin:0 auto}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance}
+h1{font-size:1.7rem;font-weight:700}
+h2{font-size:1.1rem;font-weight:650}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)} .small{font-size:.85rem}
+.label{font-size:.72rem;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+header.top{position:sticky;top:0;z-index:5;background:var(--bg);padding:calc(10px + env(safe-area-inset-top,0px)) 0 10px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.screen{display:grid;gap:16px;padding-bottom:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+
+nav.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:10;background:var(--surface);border-top:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px))}
+nav.tabbar button{border:0;background:none;display:grid;justify-items:center;gap:2px;padding:4px 0;color:var(--muted);font-size:.68rem;font-weight:500}
+nav.tabbar svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav.tabbar button[aria-selected="true"]{color:var(--accent)}
+.fab{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:11;width:58px;height:58px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);font-size:2rem;line-height:1;box-shadow:0 6px 18px rgba(20,30,80,.28)}
+
+.btn{border:1px solid var(--line);background:var(--surface);padding:10px 16px;border-radius:10px;font-weight:600;font-size:.95rem}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{color:var(--bad);border-color:var(--bad)}
+.btn.ghost{border-color:transparent;background:none;color:var(--muted);padding:8px 10px}
+.btn.block{width:100%}
+.btn:disabled{opacity:.5}
+.link{background:none;border:0;padding:0;color:var(--accent);font-weight:600;font-size:.9rem}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.monthbar{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.monthbar .m{font-family:var(--f-display);font-weight:650;font-size:1.15rem}
+.hero{display:grid;gap:4px}
+.hero .big{font-family:var(--f-num);font-size:2.2rem;font-weight:500;letter-spacing:-.02em}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border-radius:10px;overflow:hidden;margin-top:12px}
+.stat{background:var(--surface);padding:10px;display:grid;gap:2px}
+.stat .v{font-family:var(--f-num);font-size:1rem}
+.good{color:var(--good)} .bad{color:var(--bad)}
+
+.cats{display:grid;gap:12px}
+.cat{display:grid;gap:5px}
+.cat .row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.cat .name{font-weight:550}
+.bar{height:8px;background:var(--sunk);border-radius:4px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.bar.warn i{background:var(--warn)} .bar.bad i{background:var(--bad)} .bar.none i{background:var(--muted);opacity:.4} .bar.goal i{background:var(--good)}
+.pill{display:inline-block;font-size:.7rem;font-weight:650;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.plain{background:var(--sunk);color:var(--muted)}
+
+.list{display:grid}
+.item{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+.item:first-child{border-top:0}
+.item .main{flex:1 1 9em;min-width:0}
+.item .t{font-weight:550;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .amt{font-family:var(--f-num);white-space:nowrap}
+.item .amt.in{color:var(--good)}
+.dayhead{font-size:.75rem;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:14px 0 2px}
+
+.fld{display:grid;gap:4px;min-width:0}
+.fld label,.fld .lbl{font-size:.8rem;color:var(--muted);font-weight:550}
+input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;min-width:0;font-size:16px}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form{display:grid;gap:12px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface)}
+.seg button{flex:1;border:0;background:none;padding:10px 6px;color:var(--muted);font-weight:550;font-size:.92rem}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.bigamt{font-family:var(--f-num);font-size:1.8rem;text-align:center;padding:14px}
+
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);overflow-y:auto;padding:calc(10px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.sheet .wrap{display:grid;gap:14px}
+.review{display:grid;gap:10px}
+.rrow{display:grid;grid-template-columns:auto 1fr;gap:8px 10px;align-items:start;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.rrow.off{opacity:.55}
+.rrow input[type=checkbox]{width:22px;height:22px;margin-top:10px}
+.rrow .fields{display:grid;gap:8px;min-width:0}
+.rrow .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.rrow input,.rrow select{padding:8px 10px}
+
+.empty{padding:18px;border:1.5px dashed var(--line);border-radius:var(--r);display:grid;gap:10px;color:var(--muted)}
+.empty strong{color:var(--ink);font-family:var(--f-display);font-size:1.05rem}
+.notice{padding:12px 14px;border-radius:10px;background:var(--warn-soft);font-size:.9rem;display:grid;gap:8px}
+.chart svg{width:100%;height:auto;display:block}
+.chart .axis{fill:var(--muted);font-family:var(--f-num);font-size:11px}
+.chart .grid{stroke:var(--line)}
+.chart .barr{fill:var(--accent)} .chart .past{opacity:.45}
+.chart .limit{stroke:var(--bad);stroke-width:1.5;stroke-dasharray:4 4}
+.chart .val{fill:var(--ink);font-family:var(--f-num);font-size:11px}
+.progress{height:6px;background:var(--sunk);border-radius:3px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s}
+.confirm{padding:12px;border-radius:10px;background:var(--bad-soft);display:grid;gap:10px;font-size:.92rem}
+
+.toast{position:fixed;left:16px;right:16px;bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--bg);padding:12px 16px;border-radius:12px;display:flex;justify-content:space-between;gap:14px;align-items:center;max-width:600px;margin:0 auto;font-size:.92rem}
+.toast button{background:none;border:0;color:var(--bg);font-weight:700;text-decoration:underline}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><h1 id="title">Overview</h1><span class="small muted">On this iPhone only</span></header>
+
+<!-- HOME -->
+<section class="screen" id="s-home">
+  <div id="backupNag"></div>
+  <div id="installNag"></div>
+  <div class="card">
+    <div class="monthbar"><button class="btn ghost" id="mPrev" aria-label="Previous month">‹</button><span class="m" id="mLabel"></span><button class="btn ghost" id="mNext" aria-label="Next month">›</button></div>
+    <div class="hero" style="margin-top:6px"><span class="label">Spent</span><span class="big" id="spentBig"></span><span class="small muted" id="spentSub"></span></div>
+    <div class="stats" id="stats"></div>
+  </div>
+  <div id="firstRun"></div>
+  <div class="card"><div class="head"><h2>Budget vs actual</h2><button class="link" data-go="settings">Edit limits</button></div><div class="cats" id="catBars"></div></div>
+  <div class="card"><div class="head"><h2>Due in the next 30 days</h2><button class="link" data-go="bills">All bills</button></div><div class="list" id="dueList"></div></div>
+  <div class="card chart"><div class="head"><h2>Last 6 months</h2><span class="small muted" id="chartNote"></span></div><div id="trend"></div></div>
+</section>
+
+<!-- ACTIVITY -->
+<section class="screen" id="s-activity" hidden>
+  <div class="grid2"><select id="fCat" aria-label="Filter by category"></select><select id="fMonth" aria-label="Filter by month"></select></div>
+  <div class="card"><div class="list" id="txList"></div></div>
+</section>
+
+<!-- BILLS -->
+<section class="screen" id="s-bills" hidden>
+  <div class="card"><div class="head"><h2>Bills & subscriptions</h2><span class="small muted" id="billTotal"></span></div><div class="list" id="billList"></div></div>
+  <div class="card">
+    <h2 style="margin-bottom:10px">Add a bill</h2>
+    <form class="form" id="billForm" autocomplete="off">
+      <div class="fld"><label for="bName">Name</label><input id="bName" required placeholder="Phone plan"></div>
+      <div class="grid2"><div class="fld"><label for="bAmt">Amount</label><input id="bAmt" class="num" type="number" inputmode="decimal" step="0.01" min="0" required></div>
+        <div class="fld"><label for="bCur">Currency</label><select id="bCur"><option>USD</option><option>NZD</option></select></div></div>
+      <div class="grid2"><div class="fld"><label for="bFreq">Repeats</label><select id="bFreq"><option value="monthly">Monthly</option><option value="weekly">Weekly</option><option value="yearly">Yearly</option></select></div>
+        <div class="fld"><label for="bDue">Next due</label><input id="bDue" type="date" required></div></div>
+      <div class="fld"><label for="bCat">Category</label><select id="bCat"></select></div>
+      <button class="btn primary" type="submit">Add bill</button>
+    </form>
+  </div>
+</section>
+
+<!-- GOALS -->
+<section class="screen" id="s-goals" hidden>
+  <div class="card"><h2 style="margin-bottom:6px">Savings goals</h2><div id="goalList"></div></div>
+  <div class="card">
+    <h2 style="margin-bottom:10px">New goal</h2>
+    <form class="form" id="goalForm" autocomplete="off">
+      <div class="fld"><label for="gName">Goal</label><input id="gName" required placeholder="Emergency fund"></div>
+      <div class="grid2"><div class="fld"><label for="gTarget">Target</label><input id="gTarget" class="num" type="number" inputmode="decimal" min="1" required></div>
+        <div class="fld"><label for="gSaved">Saved so far</label><input id="gSaved" class="num" type="number" inputmode="decimal" min="0" value="0"></div></div>
+      <div class="fld"><label for="gBy">Target date (optional)</label><input id="gBy" type="date"></div>
+      <button class="btn primary" type="submit">Add goal</button>
+    </form>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section class="screen" id="s-settings" hidden>
+  <div class="card">
+    <div class="head"><h2>Backup</h2><span class="small muted" id="lastBackup"></span></div>
+    <p class="small muted" style="margin:0 0 12px">Your data lives only in this app on this phone. Save a backup to Files or iCloud Drive every week or two. If you delete the app or change phones, restore from it.</p>
+    <div class="actions"><button class="btn primary" id="backupBtn">Save backup</button><label class="btn" for="restoreFile">Restore from backup</label><input id="restoreFile" type="file" accept=".json,application/json" hidden></div>
+    <div id="restoreConfirm" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <div class="head"><h2>Monthly limits</h2><span class="small muted" id="budgetTotal"></span></div>
+    <p class="small muted" style="margin:0 0 6px">Leave blank to track a category without a limit. Limits are in USD.</p>
+    <div class="list" id="budgetList"></div>
+    <form class="actions" id="catForm" style="margin-top:12px"><input id="newCat" placeholder="New category" style="flex:1" required><button class="btn" type="submit">Add</button></form>
+  </div>
+  <div class="card">
+    <h2 style="margin-bottom:10px">Currency</h2>
+    <div class="form">
+      <div class="fld"><span class="lbl">Show totals in</span><div class="seg" id="dispSeg"><button type="button" data-c="USD">USD</button><button type="button" data-c="NZD">NZD</button></div></div>
+      <div class="fld"><label for="rate">1 NZD equals this many USD</label><input id="rate" class="num" type="number" inputmode="decimal" step="0.0001" min="0.01"></div>
+      <p class="small muted" style="margin:0">Check your bank's rate now and then and update it. Every NZD entry is converted with it.</p>
+    </div>
+  </div>
+  <div class="card">
+    <div class="head"><h2>Merchant rules</h2><span class="small muted" id="ruleCount"></span></div>
+    <p class="small muted" style="margin:0 0 6px">The app learns these when you save a transaction, so the same shop gets the same category next time.</p>
+    <div class="list" id="ruleList"></div>
+  </div>
+  <div class="card">
+    <h2 style="margin-bottom:10px">Start over</h2>
+    <button class="btn danger" id="eraseBtn">Erase everything on this phone</button>
+    <div id="eraseConfirm" style="margin-top:12px"></div>
+  </div>
+</section>
+</div>
+
+<button class="fab" id="fab" aria-label="Add spending">+</button>
+<nav class="tabbar" id="tabbar">
+  <button data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>Overview</button>
+  <button data-tab="activity" aria-selected="false"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Activity</button>
+  <button data-tab="bills" aria-selected="false"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>Bills</button>
+  <button data-tab="goals" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".5"/></svg>Goals</button>
+  <button data-tab="settings" aria-selected="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 0 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Settings</button>
+</nav>
+
+<!-- ADD SHEET -->
+<div class="sheet" id="sheet" hidden>
+  <div class="wrap">
+    <div class="head" style="margin:0"><h1 id="sheetTitle">Add spending</h1><button class="btn ghost" id="sheetClose">Close</button></div>
+    <div class="seg" id="modeSeg"><button data-m="type" aria-pressed="true">Type it</button><button data-m="paste" aria-pressed="false">Paste text</button><button data-m="scan" aria-pressed="false">Screenshot</button></div>
+
+    <form class="form" id="txForm" autocomplete="off">
+      <div class="seg" id="kindSeg"><button type="button" data-k="expense" aria-pressed="true">Spent</button><button type="button" data-k="income" aria-pressed="false">Received</button></div>
+      <input id="txAmt" class="bigamt" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0.00" required aria-label="Amount">
+      <div class="fld"><label for="txDesc">What was it?</label><input id="txDesc" required placeholder="Trader Joe's" list="merchants"></div>
+      <datalist id="merchants"></datalist>
+      <div class="grid2"><div class="fld"><label for="txCat">Category</label><select id="txCat"></select></div><div class="fld"><label for="txDate">Date</label><input id="txDate" type="date" required></div></div>
+      <div class="fld"><label for="txCur">Currency</label><select id="txCur"><option>USD</option><option>NZD</option></select></div>
+      <button class="btn primary block" id="txSubmit" type="submit">Add</button>
+      <button class="btn danger block" id="txDelete" type="button" hidden>Delete transaction</button>
+    </form>
+
+    <div class="form" id="pastePane" hidden>
+      <p class="small muted" style="margin:0">In Photos, open your banking screenshot, press and hold on the text, tap <b>Select All</b>, then <b>Copy</b>. Paste it below.</p>
+      <textarea id="pasteIn" rows="7" placeholder="Paste copied text here"></textarea>
+      <button class="btn primary block" id="pasteGo">Find transactions</button>
+    </div>
+
+    <div class="form" id="scanPane" hidden>
+      <p class="small muted" style="margin:0">Pick one or more screenshots from your banking app. They're read on this phone and never leave it. The first scan takes a little longer while the reader starts up.</p>
+      <label class="btn primary block" for="scanFile" style="text-align:center">Choose screenshots</label>
+      <input id="scanFile" type="file" accept="image/*" multiple hidden>
+      <div id="scanStatus" hidden class="form" style="gap:6px"><span class="small" id="scanMsg"></span><div class="progress"><i id="scanBar"></i></div></div>
+    </div>
+
+    <div id="reviewPane" hidden class="form">
+      <div class="head" style="margin:0"><h2 id="reviewTitle">Check these</h2><button class="link" id="reviewAll">Select all</button></div>
+      <p class="small muted" style="margin:0">Fix anything that's wrong, untick what you don't want, then save. Categories you choose here are remembered for next time.</p>
+      <div class="review" id="reviewList"></div>
+      <button class="btn primary block" id="reviewSave">Save</button>
+      <button class="btn ghost block" id="reviewDiscard">Discard</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden><span id="toastText"></span><button id="toastUndo" hidden>Undo</button></div>
+
+<script src="parse.js"></script>
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const pad = n => String(n).padStart(2, "0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const today = () => iso(new Date());
+const ym = s => s.slice(0, 7);
+const parseD = s => { const [y,m,d] = s.split("-").map(Number); return new Date(y, m-1, d||1); };
+const shiftMonth = (m, k) => { const d = parseD(m + "-01"); d.setMonth(d.getMonth() + k); return iso(d).slice(0,7); };
+const monthName = (m, short) => parseD(m+"-01").toLocaleString("en-US", short ? {month:"short"} : {month:"long", year:"numeric"});
+const shortDate = s => parseD(s).toLocaleDateString("en-US", {month:"short", day:"numeric"});
+const daysBetween = (a, b) => Math.round((parseD(b) - parseD(a)) / 86400000);
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+function addPeriod(s, freq){
+  const d = parseD(s);
+  if (freq === "weekly") d.setDate(d.getDate() + 7);
+  else if (freq === "yearly") d.setFullYear(d.getFullYear() + 1);
+  else { const day = d.getDate(); d.setDate(1); d.setMonth(d.getMonth() + 1); d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth()+1, 0).getDate())); }
+  return iso(d);
+}
+
+// ---------- storage (this phone only) ----------
+const KEY = "moneydesk.v1";
+const DEFAULT_CATS = ["Housing","Groceries","Dining out","Transport","Utilities","Subscriptions","Health","Shopping","Entertainment","Travel","Other"];
+const fresh = () => ({ v: 1, settings: { display: "USD", nzdToUsd: 0.58, categories: DEFAULT_CATS.map(name => ({ name, limit: null })) }, tx: [], bills: [], goals: [], rules: {}, lastBackup: null });
+let D;
+try { D = JSON.parse(localStorage.getItem(KEY)) || fresh(); } catch { D = fresh(); }
+D = { ...fresh(), ...D, settings: { ...fresh().settings, ...(D.settings || {}) } };
+function save(){
+  try { localStorage.setItem(KEY, JSON.stringify(D)); }
+  catch { toast("Couldn't save. Your phone may be out of storage."); }
+}
+if (navigator.storage?.persist) navigator.storage.persist().catch(() => {});
+
+// ---------- money ----------
+const rate = () => Number(D.settings.nzdToUsd) || 0.58;
+const toUSD = (amt, cur) => cur === "NZD" ? amt * rate() : amt;
+const fromUSD = v => D.settings.display === "NZD" ? v / rate() : v;
+function money(usd, whole){
+  const cur = D.settings.display;
+  const s = new Intl.NumberFormat("en-US", { style:"currency", currency: cur, currencyDisplay:"narrowSymbol", maximumFractionDigits: whole ? 0 : 2, minimumFractionDigits: whole ? 0 : 2 }).format(fromUSD(usd));
+  return cur === "NZD" && !s.includes("NZ") ? s.replace("$", "NZ$") : s;
+}
+const native = (amt, cur) => (cur === "NZD" ? "NZ$" : "$") + Number(amt).toFixed(2);
+const cats = () => D.settings.categories;
+const catNames = () => cats().map(c => c.name);
+
+// ---------- toast ----------
+let tt;
+function toast(text, undo){
+  $("toastText").textContent = text; const u = $("toastUndo"); u.hidden = !undo;
+  u.onclick = () => { $("toast").hidden = true; undo && undo(); };
+  $("toast").hidden = false; clearTimeout(tt); tt = setTimeout(() => $("toast").hidden = true, 5000);
+}
+
+// ---------- navigation ----------
+const TITLES = { home: "Overview", activity: "Activity", bills: "Bills", goals: "Goals", settings: "Settings" };
+let tab = "home", month = ym(today());
+function setTab(t){
+  tab = t; $("title").textContent = TITLES[t];
+  document.querySelectorAll("#tabbar button").forEach(b => b.setAttribute("aria-selected", b.dataset.tab === t));
+  document.querySelectorAll(".screen").forEach(s => s.hidden = s.id !== "s-" + t);
+  window.scrollTo(0, 0);
+}
+$("tabbar").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setTab(b.dataset.tab); });
+document.addEventListener("click", e => { const g = e.target.closest("[data-go]"); if (g) setTab(g.dataset.go); });
+
+// ---------- render ----------
+function render(){ renderHome(); renderActivity(); renderBills(); renderGoals(); renderSettings(); }
+
+function monthSpend(m){
+  const by = {}; let spent = 0, income = 0;
+  for (const t of D.tx){ if (ym(t.date) !== m) continue; const u = toUSD(+t.amount || 0, t.currency);
+    if (t.kind === "income") income += u; else { spent += u; by[t.category] = (by[t.category] || 0) + u; } }
+  return { spent, income, by };
+}
+
+function renderHome(){
+  $("mLabel").textContent = monthName(month); $("mNext").disabled = month >= ym(today());
+  const { spent, income, by } = monthSpend(month);
+  const budget = cats().reduce((a, c) => a + (+c.limit || 0), 0), left = budget - spent;
+  $("spentBig").textContent = money(spent);
+  $("spentSub").textContent = budget ? (left >= 0 ? `${money(left)} left of ${money(budget, true)}` : `${money(-left)} over your ${money(budget, true)} limit`) : "Set monthly limits in Settings to track what's left.";
+  $("spentSub").className = "small " + (budget ? (left >= 0 ? "good" : "bad") : "muted");
+  const bills = D.bills.reduce((a, b) => a + toUSD(b.amount, b.currency) * (b.freq === "weekly" ? 52/12 : b.freq === "yearly" ? 1/12 : 1), 0);
+  $("stats").innerHTML = `<div class="stat"><span class="label">Received</span><span class="v ${income ? "good" : ""}">${money(income, true)}</span></div>
+    <div class="stat"><span class="label">Net</span><span class="v ${income - spent < 0 ? "bad" : ""}">${money(income - spent, true)}</span></div>
+    <div class="stat"><span class="label">Bills / mo</span><span class="v">${money(bills, true)}</span></div>`;
+
+  $("firstRun").innerHTML = !D.tx.length && !D.bills.length ? `<div class="empty"><strong>Nothing logged yet</strong>
+    <span>Tap + to add spending: type it in, paste text copied from a screenshot, or pick screenshots from your banking app. Then set monthly limits in Settings.</span></div>` : "";
+
+  const stale = !D.lastBackup || daysBetween(D.lastBackup, today()) > 14;
+  $("backupNag").innerHTML = D.tx.length >= 10 && stale ? `<div class="notice"><span>${D.lastBackup ? `Last backup was ${shortDate(D.lastBackup)}.` : "You haven't backed up yet."} Your data only exists on this phone.</span><div><button class="btn" id="nagBackup">Save backup now</button></div></div>` : "";
+  const nb = $("nagBackup"); if (nb) nb.onclick = backup;
+  const standalone = window.navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+  $("installNag").innerHTML = standalone ? "" : `<div class="notice"><span><b>Add this to your Home Screen before you start.</b> Tap the Share button in Safari, then "Add to Home Screen", and use the app from that icon. Data entered here in Safari stays separate from the app.</span></div>`;
+
+  const rows = cats().map(c => ({ name: c.name, limit: +c.limit || 0, spent: by[c.name] || 0 })).filter(r => r.limit || r.spent);
+  for (const k of Object.keys(by)) if (!catNames().includes(k)) rows.push({ name: k, limit: 0, spent: by[k] });
+  rows.sort((a, b) => (b.limit ? b.spent / b.limit : 0) - (a.limit ? a.spent / a.limit : 0) || b.spent - a.spent);
+  $("catBars").innerHTML = rows.length ? rows.map(r => {
+    const p = r.limit ? r.spent / r.limit : 0, cls = !r.limit ? "none" : p > 1 ? "bad" : p >= .8 ? "warn" : "";
+    const pill = !r.limit ? `<span class="pill plain">no limit</span>` : p > 1 ? `<span class="pill bad">over ${money(r.spent - r.limit, true)}</span>` : p >= .8 ? `<span class="pill warn">${Math.round(p*100)}%</span>` : `<span class="pill good">${money(r.limit - r.spent, true)} left</span>`;
+    const w = r.limit ? Math.min(100, p * 100) : Math.min(100, spent ? r.spent / spent * 100 : 0);
+    return `<div class="cat"><div class="row"><span class="name">${esc(r.name)}</span>${pill}</div><div class="bar ${cls}"><i style="width:${w}%"></i></div><span class="small muted num">${money(r.spent, true)}${r.limit ? " of " + money(r.limit, true) : ""}</span></div>`;
+  }).join("") : `<p class="small muted" style="margin:0">No spending logged for ${monthName(month)}.</p>`;
+
+  const soon = D.bills.filter(b => daysBetween(today(), b.nextDue) <= 30).sort((a, b) => a.nextDue.localeCompare(b.nextDue));
+  $("dueList").innerHTML = soon.length ? soon.map(billRow).join("") : `<p class="small muted" style="margin:0">${D.bills.length ? "Nothing due in the next 30 days." : "Add rent, phone and subscriptions under Bills."}</p>`;
+  renderTrend(budget);
+}
+
+function renderTrend(budget){
+  const ms = []; for (let i = 5; i >= 0; i--) ms.push(shiftMonth(month, -i));
+  const vals = ms.map(m => fromUSD(monthSpend(m).spent)), lim = fromUSD(budget);
+  const top = Math.max(...vals, lim, 1);
+  const raw = top / 4, p10 = Math.pow(10, Math.floor(Math.log10(raw))), step = [1,2,2.5,5,10].map(x => x * p10).find(x => x >= raw), max = step * Math.ceil(top / step);
+  const W = 360, H = 190, L = 44, R = 6, T = 16, B = 24, iw = W - L - R, ih = H - T - B, y = v => T + ih - v / max * ih, bw = iw / 6 * .58;
+  let g = "";
+  for (let v = 0; v <= max + 1e-9; v += step) g += `<line class="grid" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${L-6}" y="${y(v)+4}" text-anchor="end">${v >= 1000 ? (v/1000).toFixed(v % 1000 ? 1 : 0) + "k" : Math.round(v)}</text>`;
+  ms.forEach((m, i) => { const cx = L + iw / 6 * (i + .5), v = vals[i];
+    g += `<rect class="barr ${m === month ? "" : "past"}" x="${cx - bw/2}" y="${y(v)}" width="${bw}" height="${Math.max(0, T + ih - y(v))}" rx="3"/>`;
+    if (v > 0) g += `<text class="val" x="${cx}" y="${y(v) - 4}" text-anchor="middle">${v >= 1000 ? (v/1000).toFixed(1) + "k" : Math.round(v)}</text>`;
+    g += `<text class="axis" x="${cx}" y="${H - 6}" text-anchor="middle">${monthName(m, true)}</text>`; });
+  if (lim > 0) g += `<line class="limit" x1="${L}" x2="${W-R}" y1="${y(lim)}" y2="${y(lim)}"/>`;
+  $("trend").innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Spending per month, last six months">${g}</svg>`;
+  $("chartNote").textContent = lim > 0 ? "Dashed: monthly limit" : D.settings.display;
+}
+
+function renderActivity(){
+  const fc = $("fCat").value, fm = $("fMonth").value;
+  const fill = (sel, opts) => { const v = sel.value; sel.innerHTML = opts.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join(""); if ([...sel.options].some(o => o.value === v)) sel.value = v; };
+  fill($("fCat"), [["", "All categories"], ...catNames().map(c => [c, c]), ["Income", "Income"]]);
+  const months = [...new Set([ym(today()), ...D.tx.map(t => ym(t.date))])].sort().reverse();
+  fill($("fMonth"), [["", "All months"], ...months.map(m => [m, monthName(m)])]);
+  const list = D.tx.filter(t => (!fc || t.category === fc) && (!fm || ym(t.date) === fm)).sort((a, b) => b.date.localeCompare(a.date) || (b.created || "").localeCompare(a.created || ""));
+  let html = "", last = "";
+  for (const t of list.slice(0, 400)){
+    if (t.date !== last){ last = t.date; html += `<div class="dayhead">${parseD(t.date).toLocaleDateString("en-US", {weekday:"short", month:"short", day:"numeric"})}</div>`; }
+    const inc = t.kind === "income";
+    html += `<div class="item" data-tx="${esc(t.id)}" style="cursor:pointer"><div class="main"><div class="t">${esc(t.desc)}</div><div class="small muted">${esc(t.category)}${t.currency !== D.settings.display ? " · " + native(t.amount, t.currency) : ""}</div></div><span class="amt ${inc ? "in" : ""}">${inc ? "+" : "−"}${money(toUSD(t.amount, t.currency))}</span></div>`;
+  }
+  $("txList").innerHTML = html || `<p class="small muted" style="margin:0">${D.tx.length ? "Nothing matches that filter." : "Your transactions show up here. Tap + to add one."}</p>`;
+}
+$("fCat").onchange = renderActivity; $("fMonth").onchange = renderActivity;
+$("txList").addEventListener("click", e => { const r = e.target.closest("[data-tx]"); if (r) openSheet("type", D.tx.find(t => t.id === r.dataset.tx)); });
+
+function billRow(b){
+  const d = daysBetween(today(), b.nextDue);
+  const pill = d < 0 ? `<span class="pill bad">${-d}d overdue</span>` : d === 0 ? `<span class="pill warn">today</span>` : d <= 7 ? `<span class="pill warn">in ${d}d</span>` : `<span class="pill plain">${shortDate(b.nextDue)}</span>`;
+  return `<div class="item"><div class="main"><div class="t">${esc(b.name)}</div><div class="small muted"><span class="num">${money(toUSD(b.amount, b.currency))}</span> · ${esc(b.freq)}</div></div>${pill}<button class="btn" data-paid="${esc(b.id)}">Paid</button></div>`;
+}
+function renderBills(){
+  const monthly = D.bills.reduce((a, b) => a + toUSD(b.amount, b.currency) * (b.freq === "weekly" ? 52/12 : b.freq === "yearly" ? 1/12 : 1), 0);
+  $("billTotal").textContent = D.bills.length ? `${money(monthly, true)}/mo · ${money(monthly * 12, true)}/yr` : "";
+  const list = [...D.bills].sort((a, b) => a.nextDue.localeCompare(b.nextDue));
+  $("billList").innerHTML = list.length ? list.map(b => billRow(b).replace('</div></div>', `</div></div>`).replace(/<button class="btn" data-paid/, `<button class="btn ghost" data-delbill="${esc(b.id)}" aria-label="Delete ${esc(b.name)}">✕</button><button class="btn" data-paid`)).join("")
+    : `<p class="small muted" style="margin:0">No bills yet. Tapping "Paid" logs the payment and moves the due date forward.</p>`;
+  fillCatSelect($("bCat"), $("bCat").value || "Subscriptions");
+}
+function renderGoals(){
+  $("goalList").innerHTML = D.goals.length ? D.goals.map(g => {
+    const p = Math.min(100, g.saved / g.target * 100 || 0), rem = Math.max(0, g.target - g.saved);
+    let pace = rem === 0 ? "Reached" : "";
+    if (g.by && rem > 0){ const mths = Math.max(1, (parseD(g.by) - new Date()) / (86400000 * 30.44)); pace = `${money(rem / mths, true)}/month to reach it by ${parseD(g.by).toLocaleDateString("en-US", {month:"short", year:"numeric"})}`; }
+    return `<div class="item" style="display:grid;gap:8px"><div class="cat"><div class="row"><span class="name">${esc(g.name)}</span><span class="small num">${money(g.saved, true)} / ${money(g.target, true)}</span></div><div class="bar goal"><i style="width:${p}%"></i></div>${pace ? `<span class="small muted">${pace}</span>` : ""}</div>
+      <div class="actions"><input id="ga-${esc(g.id)}" class="num" type="number" inputmode="decimal" placeholder="Amount" style="flex:1;padding:8px 10px" aria-label="Amount for ${esc(g.name)}"><button class="btn" data-gadd="${esc(g.id)}">Add</button><button class="btn ghost" data-delgoal="${esc(g.id)}" aria-label="Delete ${esc(g.name)}">✕</button></div></div>`;
+  }).join("") : `<p class="small muted" style="margin:0">Set a target and log what you put aside. The app works out how much you need each month.</p>`;
+}
+function renderSettings(){
+  $("lastBackup").textContent = D.lastBackup ? "Last: " + shortDate(D.lastBackup) : "Never";
+  const total = cats().reduce((a, c) => a + (+c.limit || 0), 0);
+  $("budgetTotal").textContent = total ? money(total, true) + "/mo" : "";
+  if (!document.activeElement?.dataset?.lim) $("budgetList").innerHTML = cats().map((c, i) => `<div class="item"><div class="main"><div class="t">${esc(c.name)}</div></div><input id="lim-${i}" data-lim="${i}" class="num" type="number" inputmode="decimal" min="0" placeholder="No limit" value="${c.limit ?? ""}" style="width:7.5em;text-align:right;padding:8px 10px" aria-label="Limit for ${esc(c.name)}"><button class="btn ghost" data-rmcat="${i}" aria-label="Remove ${esc(c.name)}">✕</button></div>`).join("");
+  document.querySelectorAll("#dispSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.c === D.settings.display));
+  if (document.activeElement !== $("rate")) $("rate").value = rate();
+  const rules = Object.entries(D.rules).sort();
+  $("ruleCount").textContent = rules.length ? rules.length + " learned" : "";
+  $("ruleList").innerHTML = rules.length ? rules.map(([k, v]) => `<div class="item"><div class="main"><div class="t">${esc(k)}</div><div class="small muted">${esc(v)}</div></div><button class="btn ghost" data-rmrule="${esc(k)}" aria-label="Forget ${esc(k)}">✕</button></div>`).join("") : `<p class="small muted" style="margin:0">None yet.</p>`;
+}
+function fillCatSelect(sel, keep, income){
+  const opts = income ? ["Income"] : catNames();
+  sel.innerHTML = opts.map(c => `<option>${esc(c)}</option>`).join("");
+  if (opts.includes(keep)) sel.value = keep;
+}
+
+$("mPrev").onclick = () => { month = shiftMonth(month, -1); renderHome(); };
+$("mNext").onclick = () => { if (month < ym(today())){ month = shiftMonth(month, 1); renderHome(); } };
+
+// ---------- add / edit sheet ----------
+let editing = null, kind = "expense", mode = "type";
+function learn(desc, category, k){ if (k === "income" || !desc || desc === "Unknown") return; D.rules[MDParse.merchantKey(desc)] = category; }
+function setKind(k){ kind = k; document.querySelectorAll("#kindSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.k === k)); fillCatSelect($("txCat"), $("txCat").value, k === "income"); }
+function setMode(m){
+  mode = m; document.querySelectorAll("#modeSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.m === m));
+  $("txForm").hidden = m !== "type"; $("pastePane").hidden = m !== "paste"; $("scanPane").hidden = m !== "scan";
+  $("reviewPane").hidden = true;
+}
+function openSheet(m, tx){
+  editing = tx || null; $("sheet").hidden = false; document.body.style.overflow = "hidden";
+  $("modeSeg").hidden = !!tx; $("sheetTitle").textContent = tx ? "Edit transaction" : "Add spending";
+  $("txSubmit").textContent = tx ? "Save changes" : "Add"; $("txDelete").hidden = !tx;
+  $("merchants").innerHTML = [...new Set(D.tx.map(t => t.desc))].slice(0, 200).map(d => `<option value="${esc(d)}">`).join("");
+  setMode(m);
+  if (tx){ setKind(tx.kind); $("txAmt").value = tx.amount; $("txDesc").value = tx.desc; $("txCat").value = tx.category; $("txDate").value = tx.date; $("txCur").value = tx.currency; }
+  else { $("txForm").reset(); setKind("expense"); $("txDate").value = today(); $("txCur").value = D.settings.display; fillCatSelect($("txCat"), "Groceries"); }
+  if (m === "type" && !tx) setTimeout(() => $("txAmt").focus(), 80);
+}
+function closeSheet(){ $("sheet").hidden = true; document.body.style.overflow = ""; review = []; $("pasteIn").value = ""; $("scanStatus").hidden = true; }
+$("fab").onclick = () => openSheet("type");
+$("sheetClose").onclick = closeSheet;
+$("modeSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setMode(b.dataset.m); });
+$("kindSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (b) setKind(b.dataset.k); });
+$("txDesc").addEventListener("change", () => { if (kind === "expense" && !editing) $("txCat").value = MDParse.guessCategory($("txDesc").value, "expense", D.rules, catNames()); });
+$("txForm").addEventListener("submit", e => {
+  e.preventDefault();
+  const body = { desc: $("txDesc").value.trim(), amount: Math.abs(+$("txAmt").value), currency: $("txCur").value, date: $("txDate").value, category: kind === "income" ? "Income" : $("txCat").value, kind };
+  if (!body.desc || !body.amount || !body.date) return;
+  if (editing){ Object.assign(D.tx.find(t => t.id === editing.id), body); toast("Saved"); }
+  else { D.tx.push({ id: uid(), ...body, source: "manual", created: new Date().toISOString() }); toast(`Added ${body.desc}`); }
+  learn(body.desc, body.category, kind); save(); render(); closeSheet();
+});
+$("txDelete").onclick = () => {
+  const t = editing; if (!t) return; const idx = D.tx.findIndex(x => x.id === t.id); if (idx < 0) return;
+  const [gone] = D.tx.splice(idx, 1); save(); render(); closeSheet();
+  toast(`Deleted ${gone.desc}`, () => { D.tx.push(gone); save(); render(); });
+};
+
+// ---------- paste & scan → review ----------
+let review = [];
+function showReview(rows){
+  const existing = new Set(D.tx.map(t => `${t.date}|${(+t.amount).toFixed(2)}`));
+  const seen = new Set();
+  review = rows.map(r => { const k = `${r.date}|${r.amount.toFixed(2)}`, kd = k + "|" + r.desc.toLowerCase(); const dup = existing.has(k) || seen.has(kd); seen.add(kd); return { ...r, category: MDParse.guessCategory(r.desc, r.kind, D.rules, catNames()), dup, on: !dup }; });
+  $("pastePane").hidden = $("scanPane").hidden = true; $("reviewPane").hidden = false;
+  renderReview(); $("reviewPane").scrollIntoView({ behavior: "smooth" });
+}
+function renderReview(){
+  const n = review.filter(r => r.on).length;
+  $("reviewTitle").textContent = review.length ? `Found ${review.length}` : "Nothing found";
+  $("reviewList").innerHTML = review.length ? review.map((r, i) => `<div class="rrow ${r.on ? "" : "off"}">
+    <input type="checkbox" id="rv-on-${i}" data-rv="${i}" data-f="on" ${r.on ? "checked" : ""} aria-label="Include">
+    <div class="fields">
+      <input id="rv-d-${i}" data-rv="${i}" data-f="desc" value="${esc(r.desc)}" aria-label="Description">
+      ${r.dup ? `<span class="pill warn" style="justify-self:start">Looks like one you already have</span>` : ""}
+      <div class="two"><input id="rv-a-${i}" data-rv="${i}" data-f="amount" class="num" type="number" inputmode="decimal" step="0.01" value="${r.amount}" aria-label="Amount"><input id="rv-t-${i}" data-rv="${i}" data-f="date" type="date" value="${r.date}" aria-label="Date"></div>
+      <div class="two"><select id="rv-k-${i}" data-rv="${i}" data-f="kind" aria-label="Type"><option value="expense" ${r.kind === "expense" ? "selected" : ""}>Spent</option><option value="income" ${r.kind === "income" ? "selected" : ""}>Received</option></select>
+        <select id="rv-c-${i}" data-rv="${i}" data-f="category" aria-label="Category">${(r.kind === "income" ? ["Income"] : catNames()).map(c => `<option ${c === r.category ? "selected" : ""}>${esc(c)}</option>`).join("")}</select></div>
+      <select id="rv-cur-${i}" data-rv="${i}" data-f="currency" aria-label="Currency"><option ${r.currency === "USD" ? "selected" : ""}>USD</option><option ${r.currency === "NZD" ? "selected" : ""}>NZD</option></select>
+    </div></div>`).join("") : `<p class="small muted">Couldn't spot any amounts with cents (like 12.50). Try a screenshot that shows the transaction list clearly, or type it in.</p>`;
+  $("reviewSave").textContent = `Save ${n} transaction${n === 1 ? "" : "s"}`; $("reviewSave").disabled = !n;
+}
+$("reviewList").addEventListener("change", e => {
+  const el = e.target.closest("[data-rv]"); if (!el) return; const r = review[+el.dataset.rv], f = el.dataset.f;
+  r[f] = f === "on" ? el.checked : f === "amount" ? Math.abs(+el.value) : el.value;
+  if (f === "kind") r.category = r.kind === "income" ? "Income" : MDParse.guessCategory(r.desc, "expense", D.rules, catNames());
+  if (f === "on" || f === "kind") renderReview(); else { const n = review.filter(x => x.on).length; $("reviewSave").textContent = `Save ${n} transaction${n === 1 ? "" : "s"}`; }
+});
+$("reviewAll").onclick = () => { review.forEach(r => r.on = true); renderReview(); };
+$("reviewSave").onclick = () => {
+  const pick = review.filter(r => r.on && r.amount); if (!pick.length) return;
+  const now = new Date().toISOString();
+  for (const r of pick){ D.tx.push({ id: uid(), date: r.date, desc: r.desc.trim() || "Unknown", amount: r.amount, currency: r.currency, kind: r.kind, category: r.category, source: mode, created: now }); learn(r.desc, r.category, r.kind); }
+  save(); render(); closeSheet(); toast(`Saved ${pick.length} transaction${pick.length === 1 ? "" : "s"}`);
+};
+$("reviewDiscard").onclick = () => { review = []; setMode(mode); };
+$("pasteGo").onclick = () => { const t = $("pasteIn").value; if (t.trim()) showReview(MDParse.parse(t, { currency: D.settings.display })); };
+
+// On-phone text reading (Tesseract), loaded only when first needed
+let ocrWorker = null;
+function loadScript(src){ return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("load")); document.head.append(s); }); }
+async function getWorker(onProgress){
+  if (ocrWorker) return ocrWorker;
+  if (!window.Tesseract) await loadScript("tesseract.min.js");
+  ocrWorker = await Tesseract.createWorker("eng", 1, {
+    workerPath: new URL("worker.min.js", location.href).href,
+    corePath: new URL("./", location.href).href,
+    langPath: new URL("./", location.href).href,
+    workerBlobURL: false, gzip: true,
+    logger: m => onProgress && m.progress != null && onProgress(m.status, m.progress),
+  });
+  return ocrWorker;
+}
+// Shrink big screenshots, make them greyscale, and flip dark-mode screenshots to dark-on-light
+function prepImage(file){
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1400 / img.naturalWidth), c = document.createElement("canvas");
+      c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+      const x = c.getContext("2d"); x.drawImage(img, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      const d = x.getImageData(0, 0, c.width, c.height), p = d.data; let sum = 0;
+      for (let i = 0; i < p.length; i += 4){ const g = .299 * p[i] + .587 * p[i+1] + .114 * p[i+2]; p[i] = p[i+1] = p[i+2] = g; sum += g; }
+      const dark = sum / (p.length / 4) < 110;
+      // dark-mode screenshots get flipped; then faint grey text (dates, labels) is darkened so the reader picks it up
+      for (let i = 0; i < p.length; i += 4){ let g = dark ? 255 - p[i] : p[i]; g = g > 225 ? 255 : Math.max(0, g - 60); p[i] = p[i+1] = p[i+2] = g; }
+      x.putImageData(d, 0, 0); res(c);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image")); };
+    img.src = url;
+  });
+}
+$("scanFile").onchange = async e => {
+  const files = [...e.target.files]; e.target.value = ""; if (!files.length) return;
+  $("scanStatus").hidden = false; const msg = $("scanMsg"), bar = $("scanBar");
+  const setP = (t, p) => { msg.textContent = t; bar.style.width = Math.round(p * 100) + "%"; };
+  try {
+    setP("Starting the text reader…", .05);
+    const w = await getWorker((s, p) => { if (/load|initializ/i.test(s)) setP("Starting the text reader…", p * .3); });
+    let text = "";
+    for (let i = 0; i < files.length; i++){
+      setP(`Reading screenshot ${i + 1} of ${files.length}…`, .3 + .7 * i / files.length);
+      const canvas = await prepImage(files[i]);
+      const { data } = await w.recognize(canvas);
+      text += "\n" + data.text;
+    }
+    setP("Done", 1);
+    $("pasteIn").value = text.trim();
+    showReview(MDParse.parse(text, { currency: D.settings.display }));
+  } catch (err){
+    msg.textContent = err?.message === "image" ? "That file couldn't be opened as an image. Try a PNG or JPG screenshot." : "The text reader couldn't start. Open the app once with internet so it can finish setting up, then try again. Paste text still works.";
+    bar.style.width = "0";
+  }
+};
+
+// ---------- bills ----------
+$("billForm").addEventListener("submit", e => {
+  e.preventDefault();
+  D.bills.push({ id: uid(), name: $("bName").value.trim(), amount: Math.abs(+$("bAmt").value), currency: $("bCur").value, freq: $("bFreq").value, nextDue: $("bDue").value, category: $("bCat").value });
+  save(); render(); toast("Bill added"); $("billForm").reset(); $("bDue").value = today(); $("bCur").value = D.settings.display;
+});
+document.addEventListener("click", e => {
+  const p = e.target.closest("[data-paid]");
+  if (p){ const b = D.bills.find(x => x.id === p.dataset.paid); if (!b) return;
+    const tx = { id: uid(), desc: b.name, amount: b.amount, currency: b.currency, date: today(), category: b.category, kind: "expense", source: "bill", created: new Date().toISOString() };
+    const prev = b.nextDue; D.tx.push(tx); b.nextDue = addPeriod(b.nextDue, b.freq); save(); render();
+    toast(`Logged ${b.name}. Next due ${shortDate(b.nextDue)}`, () => { D.tx = D.tx.filter(t => t.id !== tx.id); b.nextDue = prev; save(); render(); }); return; }
+  const db = e.target.closest("[data-delbill]");
+  if (db){ const i = D.bills.findIndex(x => x.id === db.dataset.delbill); if (i < 0) return; const [gone] = D.bills.splice(i, 1); save(); render(); toast(`Deleted ${gone.name}`, () => { D.bills.push(gone); save(); render(); }); return; }
+  const ga = e.target.closest("[data-gadd]");
+  if (ga){ const g = D.goals.find(x => x.id === ga.dataset.gadd), v = +$("ga-" + ga.dataset.gadd).value; if (!g || !v) return;
+    g.saved = Math.max(0, (+g.saved || 0) + v); save(); render(); toast(`${v > 0 ? "Added" : "Took out"} ${money(Math.abs(v))}`); return; }
+  const dg = e.target.closest("[data-delgoal]");
+  if (dg){ const i = D.goals.findIndex(x => x.id === dg.dataset.delgoal); if (i < 0) return; const [gone] = D.goals.splice(i, 1); save(); render(); toast(`Deleted ${gone.name}`, () => { D.goals.push(gone); save(); render(); }); return; }
+  const rc = e.target.closest("[data-rmcat]");
+  if (rc){ const prev = clone(cats()); const [gone] = D.settings.categories.splice(+rc.dataset.rmcat, 1); save(); render(); toast(`Removed ${gone.name}`, () => { D.settings.categories = prev; save(); render(); }); return; }
+  const rr = e.target.closest("[data-rmrule]");
+  if (rr){ delete D.rules[rr.dataset.rmrule]; save(); renderSettings(); }
+});
+
+// ---------- goals ----------
+$("goalForm").addEventListener("submit", e => {
+  e.preventDefault();
+  D.goals.push({ id: uid(), name: $("gName").value.trim(), target: Math.abs(+$("gTarget").value), saved: Math.abs(+$("gSaved").value || 0), by: $("gBy").value || null });
+  save(); render(); toast("Goal added"); $("goalForm").reset();
+});
+
+// ---------- settings ----------
+$("budgetList").addEventListener("change", e => { const el = e.target.closest("[data-lim]"); if (!el) return; const v = el.value.trim(); cats()[+el.dataset.lim].limit = v === "" ? null : Math.max(0, +v); save(); el.blur(); render(); });
+$("catForm").addEventListener("submit", e => { e.preventDefault(); const n = $("newCat").value.trim(); if (!n || catNames().some(c => c.toLowerCase() === n.toLowerCase())) return; cats().push({ name: n, limit: null }); save(); render(); $("newCat").value = ""; });
+$("dispSeg").addEventListener("click", e => { const b = e.target.closest("button"); if (b){ D.settings.display = b.dataset.c; save(); render(); } });
+$("rate").addEventListener("change", e => { const v = +e.target.value; if (v > 0){ D.settings.nzdToUsd = v; save(); render(); } });
+
+// ---------- backup / restore ----------
+async function backup(){
+  const name = `money-desk-backup-${today()}.json`, json = JSON.stringify({ app: "money-desk", savedAt: new Date().toISOString(), data: D }, null, 1);
+  const file = new File([json], name, { type: "application/json" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })){ await navigator.share({ files: [file], title: "Money Desk backup" }); }
+    else { const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = name; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+    D.lastBackup = today(); save(); render(); toast("Backup ready. Choose \"Save to Files\" to keep it in iCloud Drive.");
+  } catch (err){ if (err?.name !== "AbortError") toast("Couldn't create the backup. Try again."); }
+}
+$("backupBtn").onclick = backup;
+$("restoreFile").onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  let incoming;
+  try { const j = JSON.parse(await f.text()); incoming = j.app === "money-desk" ? j.data : null; if (!incoming || !Array.isArray(incoming.tx)) throw 0; }
+  catch { $("restoreConfirm").innerHTML = `<div class="confirm">That file isn't a Money Desk backup.</div>`; return; }
+  $("restoreConfirm").innerHTML = `<div class="confirm"><span>Replace everything on this phone with this backup? It has ${incoming.tx.length} transactions, ${incoming.bills?.length || 0} bills and ${incoming.goals?.length || 0} goals. What's here now will be lost.</span>
+    <div class="actions"><button class="btn danger" id="restoreYes">Replace</button><button class="btn" id="restoreNo">Cancel</button></div></div>`;
+  $("restoreYes").onclick = () => { D = { ...fresh(), ...incoming, settings: { ...fresh().settings, ...(incoming.settings || {}) } }; save(); render(); $("restoreConfirm").innerHTML = ""; toast("Backup restored"); };
+  $("restoreNo").onclick = () => $("restoreConfirm").innerHTML = "";
+};
+$("eraseBtn").onclick = () => {
+  $("eraseConfirm").innerHTML = `<div class="confirm"><span>This deletes every transaction, bill, goal and setting on this phone. It can't be undone unless you have a backup.</span><div class="actions"><button class="btn danger" id="eraseYes">Erase everything</button><button class="btn" id="eraseNo">Cancel</button></div></div>`;
+  $("eraseYes").onclick = () => { D = fresh(); save(); render(); $("eraseConfirm").innerHTML = ""; toast("Everything erased"); };
+  $("eraseNo").onclick = () => $("eraseConfirm").innerHTML = "";
+};
+
+// ---------- offline support ----------
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
+$("bDue").value = today(); $("bCur").value = D.settings.display;
+render();
+})();
+</script>
+</body>
+</html>
